@@ -1,362 +1,478 @@
-import javax.swing.*;    // Needed for Swing classes
-import java.awt.event.*; // Needed for ActionListener Interface
+import javax.swing.*;      // Needed for Swing classes
+import java.awt.event.*;   // Needed for ActionListener Interface
+import java.awt.*;
 import java.sql.*;
 import java.io.*;
+import java.lang.reflect.Array;
+import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.IntStream; 
+import java.util.Collections;
 
-
+//********************************************************************
+// GUI - Area
 
 public class TempestGUI extends JFrame
 {
-   private JPanel panel;             // To reference a panel
-   private JButton topTenButton_Movies;       // To reference a button
-   private JButton topTenButton_Comedies;
-   private JButton topTenButton_Games;
    private final int WINDOW_WIDTH = 750;  // Window width
    private final int WINDOW_HEIGHT = 750; // Window height
-   private JTable table;
-   private JTextField searchText_movie;
-   private JButton searchButton_movie;
-   private JTextField searchText_actor;
-   private JButton searchButton_actor;
-   private JTextField searchText_year;
-   private JButton searchButton_year;
 
-   public TempestGUI()
-   {
-      setTitle("Welcome to our IMDb!");
-      setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
-      setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-      buildPanel();
-      add(panel);
-      setVisible(true);
+   JFrame f;
+
+   //Question 1
+   JTextField input_01, input_02;
+
+   //Question 2
+   JTextField input_year_1, input_year_2, input_year_actor;
+
+   //Question 3
+
+   //Question 4
+   JTextField input_genre_q4, input_year_q4, input_actor_q4;
+
+   public TempestGUI(){
+      f = new JFrame("Tempest GUI");
+      f.setSize(WINDOW_WIDTH,WINDOW_HEIGHT);
+      f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+      //********************************************************************
+      //Question 1
+
+      input_01 = new JTextField("Actor or Director");
+      input_01.setBounds(150,50, 200,30); // x , y , width, height
+      f.add(input_01);
+
+      input_02 = new JTextField("Actor or Director");
+      input_02.setBounds(390,50, 200,30); // x , y , width, height
+      f.add(input_02);
+
+      JLabel to_link = new JLabel("to");
+      to_link.setBounds(365,40,50,50); // x , y , width, height
+      f.add(to_link);
+
+      JButton search_b = new JButton("search");
+      search_b.addActionListener(new search_button());
+      search_b.setBounds(320,100,90,30); // x , y , width, height
+      f.add(search_b);
+
+      //********************************************************************
+      //Question 2
+
+      input_year_1 = new JTextField("Year value #1");
+      input_year_1.setBounds(100,200, 200,30); // x , y , width, height
+      f.add(input_year_1);
+
+      input_year_2 = new JTextField("Year value #2");
+      input_year_2.setBounds(340,200, 200,30); // x , y , width, height
+      f.add(input_year_2);
+
+      input_year_actor = new JTextField("Actor / Director");
+      input_year_actor.setBounds(550,200, 200,30); // x , y , width, height
+      f.add(input_year_actor);
+
+      JButton year_search_b = new JButton("search");
+      year_search_b.addActionListener(new year_search_button());
+      year_search_b.setBounds(320,250,90,30); // x , y , width, height
+      f.add(year_search_b);
+
+      //********************************************************************
+      //Question 3
+
+
+      //********************************************************************
+      //Question 4
+
+      input_genre_q4 = new JTextField("Genre");
+      input_genre_q4.setBounds(50,350, 200,30); // x , y , width, height
+      f.add(input_genre_q4);
+
+      input_year_q4 = new JTextField("Year");
+      input_year_q4.setBounds(290,350, 200,30); // x , y , width, height
+      f.add(input_year_q4);
+
+      input_actor_q4 = new JTextField("Favorite Actor");
+      input_actor_q4.setBounds(530,350, 200,30); // x , y , width, height
+      f.add(input_actor_q4);
+
+      JButton year_search_d = new JButton("search");
+      year_search_d.addActionListener(new q4_search_button());
+      year_search_d.setBounds(320,400,90,30); // x , y , width, height
+      f.add(year_search_d);
+
+      //********************************************************************
+
+      f.setLayout(null);
+      f.setVisible(true);
    }
 
-   // buildling panel
-   private void buildPanel()
-   {
-      searchText_year = new JTextField(20);
-      searchButton_year = new JButton("Search Years");
-      searchButton_year.addActionListener(new searchButton_year());
-
-      searchText_movie = new JTextField(20);
-      searchButton_movie = new JButton("Search Movies");
-      searchButton_movie.addActionListener(new searchButton_movie());
-
-      searchText_actor = new JTextField(20);
-      searchButton_actor = new JButton("Search Actors/Directors");
-      searchButton_actor.addActionListener(new searchButton_actor());
+   
+   public static void BFS(String start, String end){
       
-      topTenButton_Movies = new JButton("Top 10 Shows/Movies");
-      topTenButton_Movies.addActionListener(new topTenButton_Movies());
+      //variables
+      //used for testing
+      start = "nm0000102";
+      end = "nm0115524";
+      LinkedList list = new LinkedList();
+      LinkedList buffer_movie = new LinkedList();
+      LinkedList buffer_people = new LinkedList();
 
-      topTenButton_Comedies = new JButton("Top 10 Comedies");
-      topTenButton_Comedies.addActionListener(new topTenButton_Comedies());
+      Connection conn = null;
+      String index = start;
+      int index_check = start.compareTo( end );
 
-      topTenButton_Games = new JButton("Top 10 Video Games");
-      topTenButton_Games.addActionListener(new topTenButton_Games());
+      //start the tree
+      list.add(start, null);
+      Node parentnode = list.gethead();
+      
 
-      // Create a JPanel object and let the panel
-      // field reference it.
-      panel = new JPanel();
+      try{
+         conn = DriverManager.getConnection("jdbc:postgresql://db-315.cse.tamu.edu/TempestDB",dbSetup.user, dbSetup.pswd);
 
-      // user input years
-      panel.add(searchText_year);
-      panel.add(searchButton_year);
+         //repeats loop until actor found
+         while(index_check != 0){
 
-      // user input movies
-      panel.add(searchText_movie);
-      panel.add(searchButton_movie);
+            //call for all movies with the actor
+            buffer_people = null;
+            Statement stmt = conn.createStatement();
+            String sqlStatement = "select tconst from movies where movies.nconst ='"+index+"';";
+            System.out.print("Movies : ");
+            System.out.println(sqlStatement);
+            ResultSet rs = stmt.executeQuery(sqlStatement);
 
-      // user input actors
-      panel.add(searchText_actor);
-      panel.add(searchButton_actor);
+            //used to grab the titles from the column
+            while(rs.next()){
+               String title = rs.getString("tconst");
+               list.add(title, parentnode);
+               buffer_movie.add(title, buffer_movie.gethead());
+            }
 
-      // top 10 movies
-      panel.add(topTenButton_Movies);
-      panel.add(topTenButton_Comedies);
-      panel.add(topTenButton_Games);
+            //call all actors from movies
+            Node buffer_index = buffer_movie.gethead();
+            System.out.println("Test 02:");
+            while(buffer_index.getparent() != null){
+               index = buffer_index.getdata();
+               stmt = conn.createStatement();
+               sqlStatement = "select nconst from movies where movies.tconst ='"+index+"';";
+               System.out.print("People : ");
+               System.out.println(sqlStatement);
+               rs = stmt.executeQuery(sqlStatement);
+               System.out.println("Test 03:");
+               //used to grab the names from the column
+               while(rs.next()){
+                  String people = rs.getString("nconst");
+                  parentnode = buffer_index.getparent();
+                  list.add(people, parentnode);
+                  if(people == end){
+                     System.out.println("Found Actor and Breaking loop:");
+                     index = people; //since the person should be the stored in people used as another check
+                     break;
+                  }
+               }
+               System.out.println("Test 04:");
+               //interate to parent
+               buffer_index = buffer_index.getparent();
+            }
+            buffer_movie = null;
+
+
+            
+            //check if found actor
+            index_check = index.compareTo( end );
+         }
+      }
+      catch(Exception d){
+         System.out.println("Error with BFS function:");
+      }
    }
+   
 
-   // user input for years is taken and returns results
-   private class searchButton_year implements ActionListener{
+   // Class for Question 1
+   private class search_button implements ActionListener{
       public void actionPerformed(ActionEvent e){
          Connection conn = null;
-         String userInput = searchText_year.getText();
-         try {
-            Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection("jdbc:postgresql://db-315.cse.tamu.edu/TempestDB",
-               dbSetup.user, dbSetup.pswd);
-         } catch (Exception d) {
-            d.printStackTrace();
-            System.err.println(d.getClass().getName()+": "+d.getMessage());
-            System.exit(0);
-         }//end try catch
-
+         String start = input_01.getText();
+         //String index = start; //index string used for BFS
+         String end = input_02.getText();
          try{
-               // Input
-            System.out.println("Opened database successfully");
-            //create a statement object
-            Statement stmt = conn.createStatement();
-            //create an SQL statement
-            String sqlStatement = "SELECT tconst, titleType, primaryTitle, startyear, endyear, genres FROM title_basics WHERE primarytitle='"+userInput+"';";
-            //send statement to DBMS
-            ResultSet result = stmt.executeQuery(sqlStatement);
-               //OUTPUT
-            System.out.println("Search any actor or director");
-            ListTableModel model = ListTableModel.createModelFromResultSet(result);
-            table = new JTable(model);
-            JOptionPane.showMessageDialog(null, new JScrollPane(table));
-         }
-         catch (Exception d){
-            System.out.println("Error accessing Database.");
-         }
-         try {
+            //open connection to database
+            Class.forName("org.postgresql.Driver");
+            conn = DriverManager.getConnection("jdbc:postgresql://db-315.cse.tamu.edu/TempestDB",dbSetup.user, dbSetup.pswd);
+
+            // Checks if input is equal to itself first
+            int var_str = start.compareTo( end );
+            System.out.println("str1 & str2 comparison: "+var_str);
+            if(var_str == 0){
+               System.out.println(start+" has a rank number of 0:");
+               System.out.println("The actor is connected to itself:");
+            }
+
+            // If start and end not equal must perform a BFS
+            else{
+               System.out.println("Got to the BFS function call:");
+               BFS(start,end);
+            }
+
+            //close connection after done
             conn.close();
-            System.out.println("Connection Closed.");
-         } catch(Exception d) {
-            System.out.println("Connection NOT Closed.");
-         }//end try catch
+         }
+         catch(Exception d){
+            System.out.println("Some Error Occured in Main");
+         }
+         System.out.println("End of Search Button Action:");
       }
    }
 
-   // user input for movies is taken and returns results
-   private class searchButton_movie implements ActionListener{
+   // Class for Question 2
+   // List an actor who performed in a movie every year in the given range of years.
+   private class year_search_button implements ActionListener{
       public void actionPerformed(ActionEvent e){
-         Connection conn = null;
-         String userInput = searchText_movie.getText();
-         try {
-            Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection("jdbc:postgresql://db-315.cse.tamu.edu/TempestDB",
-               dbSetup.user, dbSetup.pswd);
-         } catch (Exception d) {
-            d.printStackTrace();
-            System.err.println(d.getClass().getName()+": "+d.getMessage());
-            System.exit(0);
-         }//end try catch
-
+         // converts string to int
+         int begin_year = 0;
+         int end_year = 0;
+         String begin_year_string = input_year_1.getText();
+         String end_year_string = input_year_2.getText();
          try{
-               // Input
-            System.out.println("Opened database successfully");
-            //create a statement object
-            Statement stmt = conn.createStatement();
-            //create an SQL statement
-            String sqlStatement = "SELECT tconst, titleType, primaryTitle, startyear, endyear, genres FROM title_basics WHERE primarytitle='"+userInput+"';";
-            //send statement to DBMS
-            ResultSet result = stmt.executeQuery(sqlStatement);
-            //ResultSetMeteData result_md = result.getMetaData();
-               // OUTPUT
+            begin_year = Integer.parseInt(begin_year_string);
+            end_year = Integer.parseInt(end_year_string);
+         } catch (NumberFormatException d){
+            System.out.println("Please enter a valid year");
+         }
+         int year_range = end_year - begin_year + 1;
+         // create array with range of years
+         int[] year_range_arr = new int[year_range];
+         for(int i = 0; i < year_range_arr.length; i++){
+            year_range_arr[i] = i + begin_year;
+         }
+         Connection conn = null;
+         try{
+            //open connection to database
+            Class.forName("org.postgresql.Driver");
+            conn = DriverManager.getConnection("jdbc:postgresql://db-315.cse.tamu.edu/TempestDB",dbSetup.user, dbSetup.pswd);
 
-            // ******************
-            // This part is supposed to do the writing to a file part, but it either 
-            // doesn't write anything (and also ouputs nothing to the table) or 
-            // it just comes across some error and it says "Error accessing database" (next try block)
-            System.out.println("Search any movie, show or video game");
-            result.last();
-            int rowCount = result.getRow();
-            result.beforeFirst();
-            System.out.println(rowCount);
-            String title_ = "Large result";
-            String resultIsLarge = "Your result returns more than 30 rows, do you want an output file?";
-            if (rowCount > 30){
-               int reply = JOptionPane.showConfirmDialog(null, resultIsLarge, title_, JOptionPane.YES_NO_OPTION);
-               if (reply == JOptionPane.YES_OPTION){
-                  FileWriter fstream = new FileWriter("out_gui.txt");
-                  BufferedWriter out = new BufferedWriter(fstream);
-                  while(result.next()){
-                     out.write(result.getString("tconst") + "\n");
-                     out.write(result.getString("titleType") + "\n");
-                     out.write(result.getString("primarytitle") + "\n");
-                     out.write(result.getString("startyear") + "\n");
-                     out.write(result.getString("endyear") + "\n");
-                     out.write(result.getString("genres") + "\n");
+            Statement stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+            String sqlStatement = "SELECT nconst, startyear, primarytitle, primaryname FROM movies WHERE startyear IS NOT NULL ORDER BY nconst, startyear ASC;";
+            ResultSet rs = stmt.executeQuery(sqlStatement);
+            List<String> nconst_name = new ArrayList<>();
+            List<String> primarytitle_list = new ArrayList<>();
+            // keep track of nconst
+            rs.next();
+            String prev_nconst = rs.getString(1);
+            String prev_name = rs.getString(4);
+            String primarytitle_str = "";
+            rs.beforeFirst();
+            while(rs.next()){
+               String nconst_ = rs.getString(1);
+               // while it's the same actor
+               if (nconst_.equals(prev_nconst)){
+                  // converts year to int
+                  int year_int = Integer.parseInt(rs.getString(2));
+                  if (year_int >= begin_year && year_int <= end_year){
+                     primarytitle_str += "(" + rs.getString(3) + "), ";
+                     // update array to check off year
+                     // if array is empty at the end, then we found a movie for all years
+                     for(int i = 0; i < year_range_arr.length; i++){
+                        if(year_int == year_range_arr[i] && year_range_arr[i] != 0){
+                           year_range_arr[i] = 0;
+                        }
+                     }
                   }
-                  out.close();
+               } else {
+                  // updating values once a different person is looked at
+                  int sum = 0;
+                  for(int i = 0; i < year_range_arr.length; i++){
+                     sum += year_range_arr[i];
+                  }
+                  if (sum == 0){
+                     primarytitle_list.add(primarytitle_str);
+                     nconst_name.add(prev_name);
+                  }
+                  prev_name = rs.getString(4);
+                  primarytitle_str = "";
+                  for(int i = 0; i < year_range_arr.length; i++){
+                     year_range_arr[i] = i + begin_year;
+                  }
+                  prev_nconst = nconst_;
+
+
+                  // start new search
+                  int year_int = Integer.parseInt(rs.getString(2));
+                  if (year_int >= begin_year && year_int <= end_year){
+                     primarytitle_str += rs.getString(3) + ", ";
+                     // update array to check off year
+                     // if array is empty at the end, then we found a movie for all years
+                     for(int i = 0; i < year_range_arr.length; i++){
+                        if(year_int == year_range_arr[i] && year_range_arr[i] != 0){
+                           year_range_arr[i] = 0;
+                        }
+                     }
+                  }
                }
-               else if (reply == JOptionPane.NO_OPTION){
-                  ListTableModel model = ListTableModel.createModelFromResultSet(result);
-                  table = new JTable(model);
-                  JOptionPane.showMessageDialog(null, new JScrollPane(table));
+            }
+            if(nconst_name.size() > 0){
+               Random rand = new Random();
+               int rand_int = rand.nextInt(nconst_name.size());
+               System.out.println("Actor or Director: " + nconst_name.get(rand_int));
+               System.out.println("Credited movies: " + primarytitle_list.get(rand_int));
+            } else {
+               System.out.println("No matches found!");
+            }
+         }
+         catch(Exception d){
+            System.out.println("Some Error Occured");
+            System.out.println(d);
+         }
+         try{
+            //close connection after done
+            conn.close();
+            System.out.println("Connection closed.");
+         } catch (Exception b){
+            System.out.println("Connection NOT closed");
+         }
+         System.out.println("End of Search Button Action:");
+         
+      }
+   }
+
+   // Question 4
+   // Get top 50 list genre?
+   // filter out years (+/- 5 years from given)
+   // filter out movies which include favorite actor
+   // look at title crew
+
+   // look at random movie from actor with corresponding genre and year range
+   // look up directors/writers from that movie
+   // look at knownfortitles 
+
+   // top movies in genre
+   // SELECT DISTINCT primarytitle, tconst, genres, startyear, averagerating, numvotes FROM movies WHERE genres LIKE '%Action%' AND numvotes>10000 AND startyear::integer BETWEEN 1975 AND 1985 ORDER BY averagerating DESC LIMIT 50;
+
+   // movies by actor which include genre, within range year given
+   // SELECT DISTINCT tconst, genres, startyear, primarytitle FROM movies WHERE primaryname='Arnold Schwarzenegger' AND genres LIKE '%Action%' AND numvotes>10000 AND startyear::integer BETWEEN 1975 AND 1985 ORDER BY startyear ASC;
+
+   private class q4_search_button implements ActionListener{
+      public void actionPerformed(ActionEvent e){
+         String input_genre = input_genre_q4.getText();
+         int input_year = Integer.parseInt(input_year_q4.getText());
+         String input_actor = input_actor_q4.getText();
+         // range of years to look through
+         int low_year = input_year - 3;
+         int high_year = input_year + 3;
+
+         Connection conn = null;
+         try{
+            //open connection to database
+            Class.forName("org.postgresql.Driver");
+            conn = DriverManager.getConnection("jdbc:postgresql://db-315.cse.tamu.edu/TempestDB",dbSetup.user, dbSetup.pswd);
+
+            Statement stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+            // look for relevant movies by actor in date range
+            String sqlStatement = "SELECT DISTINCT tconst FROM movies WHERE primaryname='" + input_actor + "' AND genres LIKE '%" + input_genre + "%' AND numvotes>10000 AND startyear::integer BETWEEN " + low_year + " AND " + high_year + ";";
+            ResultSet rs = stmt.executeQuery(sqlStatement);
+
+            // store tconst for lookup later
+            List<String> tconst_actor = new ArrayList<>();
+            while(rs.next()){
+               tconst_actor.add(rs.getString(1));
+            }
+
+            // store list of directors and writers from actor's relevant movies
+            List<String> nconst_directors = new ArrayList<>();
+            for(int i = 0; i < tconst_actor.size(); i++){
+               sqlStatement = "SELECT DISTINCT directors, writers FROM title_crew WHERE tconst='" + tconst_actor.get(i) + "';";
+               rs = stmt.executeQuery(sqlStatement);
+               while(rs.next()){
+                  String dir_ = rs.getString(1);
+                  String[] split_dir = dir_.split("\\s*,\\s*");
+                  String writer_ = rs.getString(2);
+                  String[] split_writer = writer_.split("\\s*,\\s*");
+                  for(int j = 0; j < split_dir.length; j++){
+                     nconst_directors.add(split_dir[j]);
+                  }
+                  for(int k = 0; k < split_writer.length; k++){
+                     nconst_directors.add(split_writer[k]);
+                  }                  
+               }
+            }
+
+            // store all movies that the actor searched is NOT in
+            sqlStatement = "SELECT DISTINCT nconst FROM name_basics WHERE primaryname='" + input_actor + "';";
+            rs = stmt.executeQuery(sqlStatement);
+            String nconst_actor = "";
+            if(rs.next()){
+               nconst_actor = rs.getString(1);
+            }
+            // look up directors and writers' movies who fit genre and year range
+            List<String> movie_recommend = new ArrayList<>();
+            List<String> director_recommended = new ArrayList<>();
+            for(int i = 0; i < nconst_directors.size(); i++){
+               sqlStatement = "SELECT DISTINCT tconst, primarytitle FROM movies WHERE numvotes>1000 AND nconst='" + nconst_directors.get(i) +"' AND genres LIKE '%" + input_genre + "%' AND startyear::integer BETWEEN " + low_year + " AND " + high_year + ";";
+               rs = stmt.executeQuery(sqlStatement);
+               while(rs.next()){
+                  String temp_tconst = rs.getString(1);
+                  Statement stmt_new = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+                  sqlStatement = "SELECT nconst FROM title_principals WHERE tconst='" + temp_tconst + "';";
+                  ResultSet rs_new = stmt_new.executeQuery(sqlStatement);
+                  boolean actor_in = false;
+                  while(rs_new.next()){
+                     String nconst_check = rs_new.getString(1);
+                     if(nconst_check.equals(nconst_actor)){
+                        actor_in = true;
+                     }
+                  }
+                  if(actor_in == false){
+                     boolean is_dup = false;
+                     String temp_rs = rs.getString(2);
+                     for(int w = 0; w < movie_recommend.size(); w++){
+                        if(temp_rs.equals(movie_recommend.get(w))){
+                           is_dup = true;
+                        }
+                     }
+                     if(is_dup == false){
+                        movie_recommend.add(rs.getString(2));
+                        director_recommended.add(nconst_directors.get(i));
+                     }
+                  }
+                  stmt_new.close();
+                  rs_new.close();
+               }
+            }
+            // print out
+            List<String> director_name = new ArrayList<>();
+            for(int i = 0; i < director_recommended.size(); i++){
+               sqlStatement = "SELECT primaryname FROM name_basics WHERE nconst='" + director_recommended.get(i) + "';";
+               rs = stmt.executeQuery(sqlStatement);
+               while(rs.next()){
+                  director_name.add(rs.getString(1));
+               }
+            }
+            stmt.close();
+            rs.close();
+            if(movie_recommend.size() > 4){
+               for(int i = 0; i < movie_recommend.size(); i++){
+                  Random rand = new Random();
+                  int rand_int = rand.nextInt(movie_recommend.size());
+                  int temp_int = i + 1;
+                  System.out.println("Recommendation " + temp_int + " from " + director_name.get(rand_int) + ":" + movie_recommend.get(rand_int));
+                  movie_recommend.remove(rand_int);
+                  director_name.remove(rand_int);
                }
             } else {
-               ListTableModel model = ListTableModel.createModelFromResultSet(result);
-               table = new JTable(model);
-               JOptionPane.showMessageDialog(null, new JScrollPane(table));
-            }// end output for this part
+               System.out.println("Not enough matches found!");
+            }
          }
-         catch (Exception d){
-            System.out.println("Error accessing Database.");
+         catch(Exception d){
+            System.out.println("Some Error Occured");
+            System.out.println(d);
          }
-         try {
-            conn.close();
-            System.out.println("Connection Closed.");
-         } catch(Exception d) {
-            System.out.println("Connection NOT Closed.");
-         }//end try catch
-      }
-   }
-
-   // user input for actors is taken and returns results
-   private class searchButton_actor implements ActionListener{
-      public void actionPerformed(ActionEvent e){
-         Connection conn = null;
-         String userInput = searchText_actor.getText();
-         try {
-            Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection("jdbc:postgresql://db-315.cse.tamu.edu/TempestDB",
-               dbSetup.user, dbSetup.pswd);
-         } catch (Exception d) {
-            d.printStackTrace();
-            System.err.println(d.getClass().getName()+": "+d.getMessage());
-            System.exit(0);
-         }//end try catch
-
          try{
-               // Input
-            System.out.println("Opened database successfully");
-            //create a statement object
-            Statement stmt = conn.createStatement();
-            //create an SQL statement
-            String sqlStatement = "SELECT primaryname, birthyear, deathyear, knownfortitles, nconst FROM name_basics WHERE primaryname='"+userInput+"';";
-            //send statement to DBMS
-            ResultSet result = stmt.executeQuery(sqlStatement);
-               //OUTPUT
-            System.out.println("Search any actor or director");
-            ListTableModel model = ListTableModel.createModelFromResultSet(result);
-            table = new JTable(model);
-            JOptionPane.showMessageDialog(null, new JScrollPane(table));
-         }
-         catch (Exception d){
-            System.out.println("Error accessing Database.");
-         }
-         try {
+            //close connection after done
             conn.close();
-            System.out.println("Connection Closed.");
-         } catch(Exception d) {
-            System.out.println("Connection NOT Closed.");
-         }//end try catch
-      }
-   }
-
-   // When clicked, top 10 movies according to rating pop up
-   private class topTenButton_Movies implements ActionListener{
-      public void actionPerformed(ActionEvent e){
-         Connection conn = null;
-         try {
-            Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection("jdbc:postgresql://db-315.cse.tamu.edu/TempestDB",
-               dbSetup.user, dbSetup.pswd);
-         } catch (Exception d) {
-            d.printStackTrace();
-            System.err.println(d.getClass().getName()+": "+d.getMessage());
-            System.exit(0);
-         }//end try catch
-
-         try{
-               // Input
-            System.out.println("Opened database successfully");
-            //create a statement object
-            Statement stmt = conn.createStatement();
-            //create an SQL statement
-            String sqlStatement = "SELECT title_basics.primarytitle, title_ratings.averagerating, title_basics.startyear, title_ratings.numvotes FROM title_basics INNER JOIN title_ratings ON title_basics.tconst=title_ratings.tconst WHERE title_ratings.numvotes>110000 ORDER BY title_ratings.averagerating DESC LIMIT 10;";
-            //send statement to DBMS
-            ResultSet result = stmt.executeQuery(sqlStatement);
-               //OUTPUT
-            System.out.println("Top 10 shows/movies With 100,000+ votes.");
-            ListTableModel model = ListTableModel.createModelFromResultSet(result);
-            table = new JTable(model);
-            JOptionPane.showMessageDialog(null, new JScrollPane(table));
+            System.out.println("Connection closed.");
+         } catch (Exception b){
+            System.out.println("Connection NOT closed");
          }
-         catch (Exception d){
-            System.out.println("Error accessing Database.");
-         }
-         try {
-            conn.close();
-            System.out.println("Connection Closed.");
-         } catch(Exception d) {
-            System.out.println("Connection NOT Closed.");
-         }//end try catch
-      }
-   }
-
-   // When clicked, top 10 comedies according to rating pop up
-   private class topTenButton_Comedies implements ActionListener{
-      public void actionPerformed(ActionEvent e){
-         Connection conn = null;
-         try {
-            Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection("jdbc:postgresql://db-315.cse.tamu.edu/TempestDB",
-               dbSetup.user, dbSetup.pswd);
-         } catch (Exception d) {
-            d.printStackTrace();
-            System.err.println(d.getClass().getName()+": "+d.getMessage());
-            System.exit(0);
-         }//end try catch
-
-         try{
-               // Input
-            System.out.println("Opened database successfully");
-            //create a statement object
-            Statement stmt = conn.createStatement();
-            //create an SQL statement
-            String sqlStatement = "SELECT title_basics.primarytitle, title_ratings.averagerating, title_ratings.numvotes FROM title_basics INNER JOIN title_ratings ON title_basics.tconst=title_ratings.tconst WHERE title_basics.genres LIKE 'Comedy' AND title_ratings.numvotes>'100000' ORDER BY title_ratings.averagerating DESC LIMIT 10;";
-            //send statement to DBMS
-            ResultSet result = stmt.executeQuery(sqlStatement);
-               //OUTPUT
-            System.out.println("Top 10 Comedies With 100,000+ votes.");
-            ListTableModel model = ListTableModel.createModelFromResultSet(result);
-            table = new JTable(model);
-            JOptionPane.showMessageDialog(null, new JScrollPane(table));
-         }
-         catch (Exception d){
-            System.out.println("Error accessing Database.");
-         }
-         try {
-            conn.close();
-            System.out.println("Connection Closed.");
-         } catch(Exception d) {
-            System.out.println("Connection NOT Closed.");
-         }//end try catch
-      }
-   }
-
-   // When clicked, top 10 movies according to rating pop up
-   private class topTenButton_Games implements ActionListener{
-      public void actionPerformed(ActionEvent e){
-         Connection conn = null;
-         try {
-            Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection("jdbc:postgresql://db-315.cse.tamu.edu/TempestDB",
-               dbSetup.user, dbSetup.pswd);
-         } catch (Exception d) {
-            d.printStackTrace();
-            System.err.println(d.getClass().getName()+": "+d.getMessage());
-            System.exit(0);
-         }//end try catch
-
-         try{
-               // Input
-            System.out.println("Opened database successfully");
-            //create a statement object
-            Statement stmt = conn.createStatement();
-            //create an SQL statement
-            String sqlStatement = "SELECT title_basics.primarytitle, title_ratings.averagerating, title_ratings.numvotes FROM title_basics INNER JOIN title_ratings ON title_basics.tconst=title_ratings.tconst WHERE title_basics.titletype='videoGame' AND title_ratings.numvotes>'1000' ORDER BY title_ratings.averagerating DESC LIMIT 10;";
-            //send statement to DBMS
-            ResultSet result = stmt.executeQuery(sqlStatement);
-               //OUTPUT
-            System.out.println("Top 10 Video Games With 100,000+ votes.");
-            ListTableModel model = ListTableModel.createModelFromResultSet(result);
-            table = new JTable(model);
-            JOptionPane.showMessageDialog(null, new JScrollPane(table));
-         }
-         catch (Exception d){
-            System.out.println("Error accessing Database.");
-         }
-         try {
-            conn.close();
-            System.out.println("Connection Closed.");
-         } catch(Exception d) {
-            System.out.println("Connection NOT Closed.");
-         }//end try catch
+         System.out.println("End of Search Button Action:");
       }
    }
 
